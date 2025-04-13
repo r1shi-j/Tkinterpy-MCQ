@@ -279,7 +279,7 @@ Have fun!!!
 
         for i, _ in enumerate(["A", "B", "C", "D"]):
             edit_question_frame = tk.Frame(self.edit_q_window)
-            edit_question_frame.pack(pady=2, fill="x", padx=10)
+            edit_question_frame.pack()
 
             correct_answer_index_radiobutton = tk.Radiobutton(edit_question_frame, variable=self.correct_answer_index_var, value=i)
             correct_answer_index_radiobutton.pack(side="left")
