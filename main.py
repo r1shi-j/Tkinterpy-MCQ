@@ -9,5 +9,5 @@ if __name__ == "__main__":
     all_questions = load_questions()
     all_scores = load_scores()
     root = tk.Tk()
-    app = App(root, all_questions, all_scores) 
+    app = App(root, all_questions, all_scores)
     app.mainloop()

@@ -1,12 +1,13 @@
 import random
 from datetime import datetime
 import tkinter as tk
+from tkinter import ttk
 from tkinter import StringVar
 import tkinter.messagebox as messagebox
 from question import Question, save_questions
 from score import Score, save_scores
 from settings import is_first_run, has_run_now
-from config import QUESTION_COUNT, ANSWER_COUNT
+from config import QUESTION_COUNT, ANSWER_COUNT, IS_WINDOWS
 
 class App(tk.Frame):
     def __init__(self, master, all_questions: list[Question], all_scores: list[Score]):
@@ -19,7 +20,19 @@ class App(tk.Frame):
         self.is_running_game = False
         self.sort_mode = "score"
         self.sort_reverse = False
+        self.create_styling()
         self.launch()
+
+    def create_styling(self):
+        self.style = ttk.Style()
+        self.style.configure("Red.TButton", foreground="red")
+        self.style.configure("Blue.TButton", foreground="blue")
+        self.style.configure("Title.TButton", font=("Arial", 12))
+        self.style.configure("UnderlinedTitle.TButton", font=("Arial", 12, "underline"))
+        self.style.configure("Title.TLabel", font=("Arial", 12))
+        self.style.configure("BoldTitle.TLabel", font=("Arial", 12, "bold"))
+        self.style.configure("Green.TRadiobutton", foreground="green")
+        self.style.configure("Red.TRadiobutton", foreground="red")
 
     def create_tutorial_ui(self):
         self.tutorial_window = tk.Toplevel(self.master)
@@ -50,10 +63,10 @@ To exit this tutorial click launch below!
 Have fun!!!
         """
 
-        tutorial_text_content = tk.Label(self.tutorial_window, text=tutorial_text, wraplength=460)
+        tutorial_text_content = ttk.Label(self.tutorial_window, text=tutorial_text, wraplength=460)
         tutorial_text_content.pack()
 
-        ready_button = tk.Button(self.tutorial_window, text="Launch", font=("Arial", 12), command=self.close_tutorial)
+        ready_button = ttk.Button(self.tutorial_window, text="Launch", style="Title.TButton", command=self.close_tutorial)
         ready_button.pack()
 
     def create_home_ui(self):
@@ -61,16 +74,16 @@ Have fun!!!
         self.master.maxsize(width=600, height=400)
         self.master.title("Home")
 
-        start_quiz_button = tk.Button(self.master, text="Start Quiz", command=self.start_quiz)
+        start_quiz_button = ttk.Button(self.master, text="Start Quiz", command=self.start_quiz)
         start_quiz_button.pack(pady=(10,5))
 
-        leaderboard_button = tk.Button(self.master, text="Leaderboard", command=self.show_leaderboard)
+        leaderboard_button = ttk.Button(self.master, text="Leaderboard", command=self.show_leaderboard)
         leaderboard_button.pack(pady=5)
 
-        change_questions_button = tk.Button(self.master, text="Change Questions", command=self.show_question_list)
+        change_questions_button = ttk.Button(self.master, text="Change Questions", command=self.show_question_list)
         change_questions_button.pack(pady=(5))
 
-        tutorial_button = tk.Button(self.master, text="Tutorial", command=self.show_tutorial)
+        tutorial_button = ttk.Button(self.master, text="Tutorial", command=self.show_tutorial)
         tutorial_button.pack(pady=(5,10))
 
     def create_quiz_ui(self, previous_score: Score = None):
@@ -78,17 +91,20 @@ Have fun!!!
         self.master.maxsize(width=600, height=400)
         self.master.title("Quiz" if not previous_score else "Retrying a Quiz")
 
-        question_text = StringVar(value=self.question)
-        question_label = tk.Label(self.master, textvariable=question_text, wraplength=300, font=("Arial", 12))
+        question_label = ttk.Label(self.master, text=self.question, wraplength=300, justify="center", anchor="center", style="Title.TLabel")
         question_label.pack(pady=(10,5))
 
         self.quiz_selected_answer = StringVar(value="x")
         self.quiz_selected_answer.trace_add("write", self.on_answer_selected)
         self.quiz_answer_radio_buttons = []
 
+        rb_container = tk.Frame(self.master)
+        rb_container.pack(expand=True)
+
         for option in self.answers:
-            rb = tk.Radiobutton(self.master, text=option, variable=self.quiz_selected_answer, value=option)
-            rb.pack(pady=2)
+            rb_title = option if IS_WINDOWS else " "+option
+            rb = ttk.Radiobutton(rb_container, text=rb_title, variable=self.quiz_selected_answer, value=option)
+            rb.pack(anchor="w", pady=2)
             self.quiz_answer_radio_buttons.append(rb)
 
         for i in range(len(self.answers)):
@@ -99,18 +115,18 @@ Have fun!!!
 
         self.quiz_action_button_text = StringVar(value="Submit")
 
-        self.quiz_submit_button = tk.Button(self.master, textvariable=self.quiz_action_button_text, command=lambda:self.quiz_button_action(previous_score))
+        self.quiz_submit_button = ttk.Button(self.master, textvariable=self.quiz_action_button_text, command=lambda:self.quiz_button_action(previous_score))
         self.quiz_submit_button.pack(pady=(8,4))
         self.quiz_submit_button.config(state=tk.DISABLED)
 
         if previous_score:
-            back_button = tk.Button(self.master, text="Back to Leaderboard", command=self.back_to_leaderboard)
+            back_button = ttk.Button(self.master, text="Back to Leaderboard", command=self.back_to_leaderboard)
             back_button.pack(pady=(4,8))
         else:
-            exit_button = tk.Button(self.master, text="Exit", command=self.cancel_game)
+            exit_button = ttk.Button(self.master, text="Exit", command=self.cancel_game)
             exit_button.pack(pady=(4,8))
 
-        self.master.bind('<Return>', lambda e: self.quiz_button_action(previous_score))
+        self.master.bind('<Return>', lambda e: self.quiz_button_action(previous_score) if self.quiz_selected_answer.get() in self.answers else None)
 
     def create_results_ui(self, previous_score: Score = None):
         self.master.minsize(width=340, height=140)
@@ -118,54 +134,65 @@ Have fun!!!
         self.master.title("Results" if not previous_score else "Retry Results")
 
         if not previous_score:
-            results_summary_label = tk.Label(self.master, text=f"You got {self.correct_count} correct and {self.incorrect_count} incorrect", font=("Arial", 12))
+            results_summary_label = ttk.Label(self.master, text=f"You got {self.correct_count} correct and {self.incorrect_count} incorrect", style="Title.TLabel")
             results_summary_label.pack(pady=8)
 
-            new_quiz_button = tk.Button(self.master, text="New Quiz", command=self.start_quiz)
+            new_quiz_button = ttk.Button(self.master, text="New Quiz", command=self.start_quiz)
             new_quiz_button.pack(pady=6)
 
-            row_frame = tk.Frame(self.master)
+            row_frame = ttk.Frame(self.master)
             row_frame.pack(pady=(10,2), anchor="center")
 
-            home_button = tk.Button(row_frame, text="Home", command=self.return_home)
+            home_button = ttk.Button(row_frame, text="Home", command=self.return_home)
             home_button.grid(row=0, column=0, padx=4)
 
-            home_button = tk.Button(row_frame, text="Leaderboard", command=self.back_to_leaderboard)
+            home_button = ttk.Button(row_frame, text="Leaderboard", command=self.back_to_leaderboard)
             home_button.grid(row=0, column=1, padx=4)
         else:
-            results_summary_label = tk.Label(self.master, text=f"You got {self.correct_count} correct and {self.incorrect_count} incorrect\nYour previous result was {previous_score.score}")
+            results_summary_label = ttk.Label(self.master, text=f"You got {self.correct_count} correct and {self.incorrect_count} incorrect\nYour previous result was {previous_score.score}")
             results_summary_label.pack(pady=8)
             
-            back_button = tk.Button(self.master, text="Back to Leaderboard", command=self.back_to_leaderboard)
+            back_button = ttk.Button(self.master, text="Back to Leaderboard", command=self.back_to_leaderboard)
             back_button.pack(pady=(4,8))
         
     def create_leaderboard_ui(self):
         self.master.minsize(width=400, height=300)
-        self.master.maxsize(width=400, height=self.master.winfo_screenheight()-50)
+        self.master.maxsize(width=600, height=self.master.winfo_screenheight()-50)
         self.master.title("Leaderboard")
 
         container = tk.Frame(self.master)
-        container.pack(fill="both", expand=True)
-
         canvas = tk.Canvas(container)
-        scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas)
-        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        container_frame = ttk.Frame(canvas)
+        canvas_window = canvas.create_window((0, 0), window=container_frame, anchor="n")
+        scrollable_frame = ttk.Frame(container_frame)
 
+        def on_canvas_configure(event):
+            canvas_width = event.width
+            canvas.itemconfig(canvas_window, width=canvas_width)
+            scrollable_frame.pack_configure(padx=max(0, (canvas_width - scrollable_frame.winfo_reqwidth()) // 2))
+
+        def on_container_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        container.pack(fill="both", expand=True)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.bind("<Configure>", on_canvas_configure)
+        canvas.pack(side="left", fill="both", expand=True)
+        container_frame.bind("<Configure>", on_container_configure)
+        scrollbar.pack(side="right", fill="y")
+        scrollable_frame.pack()
+        
         if self.all_scores != []:
-            home_button = tk.Button(scrollable_frame, text="Home", command=self.return_home)
+            home_button = ttk.Button(scrollable_frame, text="Home", command=self.return_home)
             home_button.grid(row=0, column=0, columnspan=3, pady=10, padx=10)
 
             score_arrow = "↑" if self.sort_mode == "score" and not self.sort_reverse else "↓" if self.sort_mode == "score" else ""
-            header_score = tk.Button(scrollable_frame, text=f"Score {score_arrow}", font=("Arial", 12, "underline"), command=self.toggle_sort_by_score,)
+            header_score = ttk.Button(scrollable_frame, text=f"Score {score_arrow}", style="UnderlinedTitle.TButton", command=self.toggle_sort_by_score,)
             header_score.grid(row=1, column=0, padx=10)
 
             date_arrow = "↑" if self.sort_mode == "date" and not self.sort_reverse else "↓" if self.sort_mode == "date" else ""
-            header_date = tk.Button(scrollable_frame, text=f"Date {date_arrow}", font=("Arial", 12, "underline"), command=self.toggle_sort_by_date)
+            header_date = ttk.Button(scrollable_frame, text=f"Date {date_arrow}", style="UnderlinedTitle.TButton", command=self.toggle_sort_by_date)
             header_date.grid(row=1, column=1, padx=10)
 
             def get_sort_key(mode):
@@ -188,19 +215,19 @@ Have fun!!!
                 return custom_format
                 
             for i, score in enumerate(sorted(self.all_scores, key=sort_key, reverse=sort_order), start=2):
-                ldb_score = tk.Label(scrollable_frame, text=score.score)
+                ldb_score = ttk.Label(scrollable_frame, text=score.score)
                 ldb_score.grid(row=i, column=0, pady=2)
 
-                ldb_date = tk.Label(scrollable_frame, text=convert_date(score.date))
+                ldb_date = ttk.Label(scrollable_frame, text=convert_date(score.date))
                 ldb_date.grid(row=i, column=1, pady=2)
 
-                ldb_retry = tk.Button(scrollable_frame, text="Retry Questions", command=lambda s=score: self.retry_quiz(s))
+                ldb_retry = ttk.Button(scrollable_frame, text="Retry Questions", command=lambda s=score: self.retry_quiz(s))
                 ldb_retry.grid(row=i, column=2, pady=4, padx=(10,))
         else:
-            title = tk.Label(scrollable_frame, text="No scores recorded")
+            title = ttk.Label(scrollable_frame, text="No scores recorded")
             title.grid(row=0, column=0, columnspan=3, pady=5, padx=80)
 
-            home_button = tk.Button(scrollable_frame, text="Home", command=self.return_home)
+            home_button = ttk.Button(scrollable_frame, text="Home", command=self.return_home)
             home_button.grid(row=1, column=0, columnspan=3, pady=5, padx=80)
 
     def create_question_list_ui(self):
@@ -209,40 +236,51 @@ Have fun!!!
         self.master.title("Questions")
 
         container = tk.Frame(self.master)
-        container.pack(fill="both", expand=True)
-
         canvas = tk.Canvas(container)
-        scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas)
-        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="n")
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        container_frame = ttk.Frame(canvas)
+        canvas_window = canvas.create_window((0, 0), window=container_frame, anchor="n")
+        scrollable_frame = ttk.Frame(container_frame)
+
+        def on_canvas_configure(event):
+            canvas_width = event.width
+            canvas.itemconfig(canvas_window, width=canvas_width)
+            scrollable_frame.pack_configure(padx=max(0, (canvas_width - scrollable_frame.winfo_reqwidth()) // 2))
+
+        def on_container_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        container.pack(fill="both", expand=True)
         canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.pack(side="left", fill="both", expand=True, padx=5, pady=10)
+        canvas.bind("<Configure>", on_canvas_configure)
+        canvas.pack(side="left", fill="both", expand=True)
+        container_frame.bind("<Configure>", on_container_configure)
         scrollbar.pack(side="right", fill="y")
+        scrollable_frame.pack()
 
         top_row_frame = tk.Frame(scrollable_frame)
         top_row_frame.pack(pady=(10,2), anchor="center")
 
-        home_button = tk.Button(top_row_frame, text="Home", command=self.return_home)
+        home_button = ttk.Button(top_row_frame, text="Home", command=self.return_home)
         home_button.grid(row=0, column=0, padx=4)
 
-        create_new_button = tk.Button(top_row_frame, text="New Question", command=self.create_edit_question_ui)
+        create_new_button = ttk.Button(top_row_frame, text="New Question", command=self.create_edit_question_ui)
         create_new_button.grid(row=0, column=1, padx=4)
 
         for index, q in enumerate(self.all_questions):
             row_frame = tk.Frame(scrollable_frame)
             row_frame.pack(pady=15, anchor="center")
 
-            question_label = tk.Label(row_frame, text=f"{index+1}: {q.question}", font=("Arial", 12, "bold"), anchor="center")
+            question_label = ttk.Label(row_frame, text=f"{index+1}: {q.question}", style="BoldTitle.TLabel", anchor="center")
             question_label.grid(row=0, column=0, padx=2)
 
-            edit_button = tk.Button(row_frame, text="Edit", command=lambda q=q: self.create_edit_question_ui(q))
+            edit_button = ttk.Button(row_frame, text="Edit", command=lambda q=q: self.create_edit_question_ui(q))
             edit_button.grid(row=0, column=1, padx=2)
 
             for a in q.answers:
-                answer_label = tk.Label(scrollable_frame, text=a, anchor="center")
+                answer_label = ttk.Label(scrollable_frame, text=a, anchor="center")
                 answer_label.pack(pady=1)
-                answer_label.config(fg="green" if q.correct_answer == a else "red")
+                answer_label.config(foreground="green" if q.correct_answer == a else "red")
 
         canvas.config(yscrollcommand=scrollbar.set)
 
@@ -262,7 +300,7 @@ Have fun!!!
         self.edit_q_window.protocol("WM_DELETE_WINDOW", self.confirm_cancel_edits)
         self.edit_q_window.grab_set()
 
-        edit_label = tk.Label(self.edit_q_window, text="Add the question name, 4 answer options and specify the correct answer with the radio button.", wraplength=420)
+        edit_label = ttk.Label(self.edit_q_window, text="Add the question name, 4 answer options and specify the correct answer with the radio button.", wraplength=420)
         edit_label.pack(pady=10)
 
         self.question_text_var = StringVar(value=question.question)
@@ -281,7 +319,7 @@ Have fun!!!
             edit_question_frame = tk.Frame(self.edit_q_window)
             edit_question_frame.pack()
 
-            correct_answer_index_radiobutton = tk.Radiobutton(edit_question_frame, variable=self.correct_answer_index_var, value=i)
+            correct_answer_index_radiobutton = ttk.Radiobutton(edit_question_frame, variable=self.correct_answer_index_var, value=i)
             correct_answer_index_radiobutton.pack(side="left")
 
             answer_var = StringVar(value=question.answers[i])
@@ -296,16 +334,15 @@ Have fun!!!
         action_button_row_frame = tk.Frame(self.edit_q_window)
         action_button_row_frame.pack(pady=(10,4), anchor="center")
 
-        self.save_button = tk.Button(action_button_row_frame, text=save_title, command=lambda: self.save_question(is_new_question, question))
+        self.save_button = ttk.Button(action_button_row_frame, text=save_title, command=lambda: self.save_question(is_new_question, question), style="Blue.TButton")
         self.save_button.grid(row=0, column=0, padx=4)
-        self.save_button.config(fg="blue", state=tk.DISABLED)
+        self.save_button.config(state=tk.DISABLED)
 
         if not is_new_question:
-            delete_button = tk.Button(action_button_row_frame, text="Delete", command=lambda: self.delete_question(question))
-            delete_button.config(fg="red")
+            delete_button = ttk.Button(action_button_row_frame, text="Delete", command=lambda: self.delete_question(question), style="Red.TButton")
             delete_button.grid(row=0, column=1, padx=4)
 
-        cancel_button = tk.Button(self.edit_q_window, text="Cancel", command=self.confirm_cancel_edits)
+        cancel_button = ttk.Button(self.edit_q_window, text="Cancel", command=self.confirm_cancel_edits)
         cancel_button.pack(pady=(4,12))
 
         self.original_question_data = self.get_current_question_data()
@@ -439,7 +476,10 @@ Have fun!!!
     def highlight_answer(self, selected_option: str, color: str):
         for rb in self.quiz_answer_radio_buttons:
             if rb.cget("value") == selected_option:
-                rb.config(fg=color)
+                if color == "green":
+                    rb.config(style="Green.TRadiobutton")
+                else:
+                    rb.config(style="Red.TRadiobutton")
 
     def toggle_sort_by_score(self):
         if self.sort_mode == "score":

@@ -1,4 +1,8 @@
 import os
+import platform
+
+OS_NAME = platform.system()
+IS_WINDOWS = OS_NAME == "Windows"
 
 BASE_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
 
